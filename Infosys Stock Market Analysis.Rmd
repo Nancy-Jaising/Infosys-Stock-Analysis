@@ -1,0 +1,109 @@
+---
+title: "Infosys Stock Market Analysis"
+output: html_document
+---
+
+## 1. Introduction
+
+This report presents a statistical analysis of Infosys Limited stock prices from 2010 to 2023, using historical intraday data sourced from NSE via Kaggle. The analysis covers time series decomposition, regression, ANOVA, hypothesis testing, and post-hoc analysis.
+
+```{r setup, include=FALSE}
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(tseries)
+library(forecast)
+df <- read.csv("data/infosys_stock.csv")
+df$Date <- as.Date(df$Date)
+df$Open <- as.numeric(df$Open)
+df$Close <- as.numeric(df$Close)
+df$Volume <- as.numeric(df$Volume)
+df <- na.omit(df)
+df$Quarter <- quarters(df$Date)
+```
+
+## 2. Dataset Overview
+
+```{r}
+cat("Total Records:", nrow(df))
+cat("\nDate Range:", as.character(min(df$Date)), "to", as.character(max(df$Date)))
+cat("\nAverage Closing Price: INR", round(mean(df$Close), 2))
+cat("\nMin Price: INR", round(min(df$Close), 2))
+cat("\nMax Price: INR", round(max(df$Close), 2))
+```
+
+## 3. Time Series - Closing Price Trend
+
+```{r}
+ggplot(df, aes(x = Date, y = Close)) +
+  geom_line(color = "steelblue") +
+  labs(title = "Infosys Closing Price (2010-2023)",
+       x = "Year", y = "Closing Price (INR)") +
+  theme_minimal()
+```
+
+## 4. Time Series Decomposition
+
+```{r}
+ts_data <- ts(df$Close, start = c(2010, 1), frequency = 252)
+decomp <- decompose(ts_data)
+plot(decomp)
+```
+
+## 5. Regression Analysis
+
+```{r}
+model <- lm(Close ~ Volume, data = df)
+summary(model)
+ggplot(df, aes(x = Volume, y = Close)) +
+  geom_point(color = "steelblue", alpha = 0.3) +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Regression: Volume vs Closing Price",
+       x = "Volume", y = "Closing Price (INR)") +
+  theme_minimal()
+```
+
+## 6. ANOVA - Quarterly Analysis
+
+```{r}
+anova_model <- aov(Close ~ Quarter, data = df)
+summary(anova_model)
+ggplot(df, aes(x = Quarter, y = Close, fill = Quarter)) +
+  geom_boxplot() +
+  labs(title = "Closing Price by Quarter",
+       x = "Quarter", y = "Closing Price (INR)") +
+  theme_minimal()
+```
+
+## 7. Hypothesis Testing
+
+```{r}
+half <- nrow(df) %/% 2
+first_half <- df$Close[1:half]
+second_half <- df$Close[(half+1):nrow(df)]
+t_result <- t.test(first_half, second_half)
+print(t_result)
+f_result <- var.test(first_half, second_half)
+print(f_result)
+```
+
+## 8. Chi-Square Test
+
+```{r}
+df$Movement <- ifelse(df$Close > df$Open, "Up", "Down")
+movement_table <- table(df$Movement, df$Quarter)
+chi_result <- chisq.test(movement_table)
+print(chi_result)
+```
+
+## 9. Post-Hoc Tukey Test
+
+```{r}
+tukey_result <- TukeyHSD(anova_model)
+print(tukey_result)
+plot(tukey_result)
+```
+
+## 10. Conclusion
+
+The analysis reveals that Infosys stock prices showed consistent long-term growth from 2010 to 2023. Regression analysis confirmed a statistically significant negative relationship between trading volume and closing price. ANOVA indicated significant price differences across quarters, with Q4 showing significantly higher prices than Q2. T-test confirmed substantial price growth between the first and second halves of the period. Chi-square test showed no significant relationship between price movement direction and quarter.
